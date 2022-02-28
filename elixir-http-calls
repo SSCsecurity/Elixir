@@ -1,0 +1,167 @@
+use HTTPoison.Base
+
+#Elixir making calls with httpoison library 
+
+url = "https://api.sportradar.us/nba/trial/v4/en/games/2016/11/05/schedule.json?api_key={api_key}"
+
+case HTTPoison.get(url) do
+  {:ok, %{status_code: 200, body: body}} ->
+    Poison.decode!(body)
+
+  {:ok, %{status_code: 404}} ->
+    # do something with a 404
+
+  {:error, %{reason: reason}} ->
+    # do something with an error
+end
+
+#another example with httpoison
+url = "https://api.sportradar.us/nfl/bracket/v2/en/games/2018/10/15/schedule.json?api_key=#{api_key}"
+
+response = HTTPoison.get!(url)
+req = Poison.decode!(response.body)
+
+#another example
+token = "some_token_from_another_request"
+url = "https://example.com/api/endpoint_that_needs_a_bearer_token"
+headers = ["Authorization": "Bearer #{token}", "Accept": "Application/json; Charset=utf-8"]
+options = [ssl: [{:versions, [:'tlsv1.2']}], recv_timeout: 500]
+{:ok, response} = HTTPoison.get(url, headers, options)
+
+#another example
+url = "https://example.org/api/endpoint_that_needs_client_cert"
+options = [ssl: [certfile: "certs/client.crt"]]
+{:ok, response} = HTTPoison.post(url, [], options)
+
+#Another example
+defmodule GitHub do
+  use HTTPoison.Base
+
+  @expected_fields ~w(
+    login id avatar_url gravatar_id url html_url followers_url
+    following_url gists_url starred_url subscriptions_url
+    organizations_url repos_url events_url received_events_url type
+    site_admin name company blog location email hireable bio
+    public_repos public_gists followers following created_at updated_at
+  )
+
+  def process_request_url(url) do
+    "https://api.github.com" <> url
+  end
+
+  def process_response_body(body) do
+    body
+    |> Poison.decode!
+    |> Map.take(@expected_fields)
+    |> Enum.map(fn({k, v}) -> {String.to_atom(k), v} end)
+  end
+end
+
+#another example
+binary_file_content = "Something you fetched and now have it in memory"
+token = "some_token_from_another_request"
+headers = ["Authorization": "Bearer #{token}", {"Content-Type", "multipart/form-data"}]
+options = [ssl: [{:versions, [:'tlsv1.2']}], recv_timeout: 500]
+
+HTTPoison.request(
+  :post,
+  "https://myurl.com",
+  {:multipart,
+   [{"file", binary_file_content, {"form-data", [name: "file", filename: "a_file_name.txt"]}, []}]},
+  headers,
+  options
+)
+
+#anotherexample
+%{
+  "day" => day,
+  "month" => month,
+  "year" => year
+} = response
+
+url = "https://api.sportradar.us/nba/trial/v4/en/games/#{day}/#{month}/#{year}/schedule.json"
+headers = []
+params = [api_key: api_key]
+
+{:ok, response} <- HTTPoison.get(url, headers, params: params)
+Poison.decode(response.body)
+
+
+#using httpotion
+defmodule GitHub do
+  use HTTPotion.Base
+
+  def process_url(url) do
+    "https://api.github.com/" <> url
+  end
+
+  def process_request_headers(headers) do
+    Dict.put headers, :"User-Agent", "github-potion"
+  end
+
+  def process_response_body(body) do
+    body |> Poison.decode!
+  end
+end
+
+
+
+#using finch
+defmodule FunctionalLangs.HackerNewsClient do
+  alias Finch.Response
+ 
+  def child_spec do
+    {Finch,
+     name: __MODULE__,
+     pools: %{
+       "https://hacker-news.firebaseio.com" => [size: pool_size()]
+     }}
+  end
+ 
+  def pool_size, do: 25
+ 
+  def get_item(item_id) do
+    :get
+    |> Finch.build("https://hacker-news.firebaseio.com/v0/item/#{item_id}.json")
+    |> Finch.request(__MODULE__)
+  end
+end
+
+#using httpc
+# First, we should start `inets` application.
+# `httpc` is part of it:
+Application.ensure_all_started(:inets)
+
+# We should start `ssl` application also,
+# if we want to make secure requests:
+Application.ensure_all_started(:ssl)
+
+# Now we can make request:
+{:ok, {{'HTTP/1.1', 200, 'OK'}, _headers, _body} =
+  :httpc.request(:get, {'http://google.com', []}, [], [])
+
+# `httpc` will follow redirect from `http` to `https` without
+# additional config.
+
+#using tzdata, hackney library
+def download_new(url \\ @download_url) do
+  Logger.debug("Tzdata downloading new data from #{url}")
+  set_latest_remote_poll_date()
+  {:ok, 200, headers, client_ref} = :hackney.get(url, [], "", [follow_redirect: true])
+  {:ok, body} = :hackney.body(client_ref)
+  content_length = byte_size(body)
+  {:ok, last_modified} = last_modified_from_headers(headers)
+
+  new_dir_name =
+    "#{data_dir()}/tmp_downloads/#{content_length}_#{:random.uniform(100_000_000)}/"
+
+  File.mkdir_p!(new_dir_name)
+  target_filename = "#{new_dir_name}latest.tar.gz"
+  File.write!(target_filename, body)
+  extract(target_filename, new_dir_name)
+  release_version = release_version_for_dir(new_dir_name)
+  Logger.debug("Tzdata data downloaded. Release version #{release_version}.")
+  {:ok, content_length, release_version, new_dir_name, last_modified}
+end
+
+
